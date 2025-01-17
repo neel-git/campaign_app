@@ -6,23 +6,24 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from authentication.models import Base as AuthBase
+from authentication.models import Base
 from practices.models import Practice, PracticeUserAssignment
 from authentication.models import User
 from core.settings import SQLALCHEMY_DATABASE_URI
 
-#sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # new lines added(1+below 3)
+# sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # new lines added(1+below 3)
 # import django
 
 # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 # django.setup()
 
 # from django.conf import settings
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 # config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)  # new line
 
 # Interpret the config file for Python logging.
@@ -34,10 +35,10 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = AuthBase.metadata
+target_metadata = Base.metadata
 
 # Set sqlalchemy.url
-config.set_main_option('sqlalchemy.url', SQLALCHEMY_DATABASE_URI) #New line 16/01/2025
+config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URI)  # New line 16/01/2025
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

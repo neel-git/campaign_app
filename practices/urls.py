@@ -3,8 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import PracticeViewSet
 
 router = DefaultRouter()
-router.register(r'', PracticeViewSet, basename='practices')
+router.register(r"", PracticeViewSet, basename="practice")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]

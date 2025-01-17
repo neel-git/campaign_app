@@ -34,8 +34,8 @@ class SignupSerializer(serializers.Serializer):
         user = User(
             username=validated_data["username"],
             email=validated_data["email"],
-            #role=UserRoleType(validated_data["role"]),
-            role=UserRoleType.practice_user, #Default role will be Practice_user only
+            # role=UserRoleType(validated_data["role"]),
+            role=UserRoleType.practice_user,  # Default role will be Practice_user only
             is_active=True,
             created_at=timezone.now(),
         )

@@ -5,6 +5,7 @@ from .models import Practice, PracticeUserAssignment
 from authentication.models import User, UserRoleType
 from rest_framework.exceptions import ValidationError
 
+
 class PracticeService:
     def __init__(self, db_session: Session):
         self.db = db_session
@@ -14,7 +15,7 @@ class PracticeService:
         existing = self.db.query(Practice).filter(Practice.name == name).first()
         if existing:
             raise ValidationError("Practice with this name already exists")
-        
+
         practice = Practice(name=name, description=description)
         self.db.add(practice)
         self.db.commit()
@@ -59,10 +60,11 @@ class PracticeService:
             raise ValidationError("User not found")
 
         # Check if assignment already exists
-        existing = self.db.query(PracticeUserAssignment).filter_by(
-            practice_id=practice_id,
-            user_id=user_id
-        ).first()
+        existing = (
+            self.db.query(PracticeUserAssignment)
+            .filter_by(practice_id=practice_id, user_id=user_id)
+            .first()
+        )
         if existing:
             raise ValidationError("User is already assigned to this practice")
 
@@ -74,11 +76,12 @@ class PracticeService:
 
     def remove_user_from_practice(self, practice_id: int, user_id: int) -> bool:
         """Remove a user from a practice"""
-        assignment = self.db.query(PracticeUserAssignment).filter_by(
-            practice_id=practice_id,
-            user_id=user_id
-        ).first()
-        
+        assignment = (
+            self.db.query(PracticeUserAssignment)
+            .filter_by(practice_id=practice_id, user_id=user_id)
+            .first()
+        )
+
         if assignment:
             self.db.delete(assignment)
             self.db.commit()
@@ -87,5 +90,35 @@ class PracticeService:
 
     def get_practice_users(self, practice_id: int) -> List[User]:
         """Get all users assigned to a practice"""
-        assignments = self.db.query(PracticeUserAssignment).filter_by(practice_id=practice_id).all()
+        assignments = (
+            self.db.query(PracticeUserAssignment)
+            .filter_by(practice_id=practice_id)
+            .all()
+        )
         return [self.db.query(User).get(a.user_id) for a in assignments]
+
+    def update_practice(self, practice_id: int, **kwargs) -> Optional[Practice]:
+        """Update practice details"""
+        practice = self.db.query(Practice).filter(Practice.id == practice_id).first()
+        if not practice:
+            raise ValidationError("Practice not found")
+
+        # Check if name is being updated and if it already exists
+        if "name" in kwargs:
+            existing = (
+                self.db.query(Practice)
+                .filter(Practice.name == kwargs["name"], Practice.id != practice_id)
+                .first()
+            )
+            if existing:
+                raise ValidationError("Practice with this name already exists")
+
+        # Update allowed fields
+        allowed_fields = ["name", "description", "is_active"]
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                setattr(practice, key, value)
+
+        self.db.commit()
+        self.db.refresh(practice)
+        return practice

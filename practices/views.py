@@ -7,11 +7,12 @@ from .services import PracticeService
 from .serializers import (
     PracticeSerializer,
     PracticeDetailSerializer,
-    PracticeUserAssignmentSerializer
+    PracticeUserAssignmentSerializer,
 )
 from utils.db_session import get_db_session
 from authentication.models import UserRoleType
 from rest_framework.exceptions import ValidationError
+
 
 class PracticeViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -28,7 +29,7 @@ class PracticeViewSet(viewsets.ViewSet):
         if request.user.role != UserRoleType.super_admin:
             return Response(
                 {"error": "Only super admins can create practices"},
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         serializer = PracticeSerializer(data=request.data)
@@ -37,15 +38,17 @@ class PracticeViewSet(viewsets.ViewSet):
                 service = PracticeService(session)
                 try:
                     practice = service.create_practice(
-                        name=serializer.validated_data['name'],
-                        description=serializer.validated_data.get('description')
+                        name=serializer.validated_data["name"],
+                        description=serializer.validated_data.get("description"),
                     )
                     return Response(
                         PracticeSerializer(practice).data,
-                        status=status.HTTP_201_CREATED
+                        status=status.HTTP_201_CREATED,
                     )
                 except ValidationError as e:
-                    return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+                    )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk=None):
@@ -54,23 +57,21 @@ class PracticeViewSet(viewsets.ViewSet):
             practice = service.get_practice(int(pk))
             if not practice:
                 return Response(
-                    {"error": "Practice not found"},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"error": "Practice not found"}, status=status.HTTP_404_NOT_FOUND
                 )
             return Response(PracticeDetailSerializer(practice).data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def assign_user(self, request, pk=None):
         if request.user.role != UserRoleType.super_admin:
             return Response(
                 {"error": "Only super admins can assign users"},
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = PracticeUserAssignmentSerializer(data={
-            'practice_id': pk,
-            'user_id': request.data.get('user_id')
-        })
+        serializer = PracticeUserAssignmentSerializer(
+            data={"practice_id": pk, "user_id": request.data.get("user_id")}
+        )
 
         if serializer.is_valid():
             with get_db_session() as session:
@@ -78,15 +79,40 @@ class PracticeViewSet(viewsets.ViewSet):
                 try:
                     assignment = service.assign_user_to_practice(
                         practice_id=int(pk),
-                        user_id=serializer.validated_data['user_id']
+                        user_id=serializer.validated_data["user_id"],
                     )
                     return Response(
                         PracticeUserAssignmentSerializer(assignment).data,
-                        status=status.HTTP_201_CREATED
+                        status=status.HTTP_201_CREATED,
                     )
                 except ValidationError as e:
                     return Response(
-                        {"error": str(e)},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
                     )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        """Update practice details (Super Admin only)"""
+        if request.user.role != UserRoleType.super_admin:
+            return Response(
+                {"error": "Only super admins can update practices"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = PracticeSerializer(data=request.data, partial=True)
+        if serializer.is_valid():
+            try:
+                with get_db_session() as session:
+                    service = PracticeService(session)
+                    practice = service.update_practice(
+                        practice_id=int(pk), **serializer.validated_data
+                    )
+                    return Response(PracticeSerializer(practice).data)
+            except ValidationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response(
+                    {"error": "Failed to update practice"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
