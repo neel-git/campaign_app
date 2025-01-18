@@ -1,5 +1,5 @@
 # authentication/models.py
-from sqlalchemy import Column, String, BigInteger, Enum, Boolean, DateTime
+from sqlalchemy import Column, String, BigInteger, Enum, Boolean, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from django.utils import timezone
@@ -23,9 +23,11 @@ class User(Base, AuthenticationMixin):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     username = Column(String(255), unique=True, nullable=False)
+    full_name = Column(String(255), nullable=True)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     role = Column(Enum(UserRoleType), nullable=False)
+    desired_practice_id = Column(BigInteger, nullable=True)
     is_active = Column(Boolean, default=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
     session_expires_at = Column(DateTime(timezone=True), nullable=True)

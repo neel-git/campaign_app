@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "corsheaders",
 ]
 
 EXTERNAL_APPS = ["practices", "authentication"]
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "authentication.middleware.CustomAuthMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -156,8 +158,21 @@ REST_FRAMEWORK = {
     ],
 }
 
+
 # AUTH_USER_MODEL = "authentication.DjangoUser"
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 86400  # 24 hours in seconds
 SESSION_SAVE_EVERY_REQUEST = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
+
+CSRF_COOKIE_SAMESITE = "Lax"  # or 'None' if needed
+CSRF_COOKIE_HTTPONLY = False  # Allows JavaScript access to the cookie
+SESSION_COOKIE_SAMESITE = "Lax"

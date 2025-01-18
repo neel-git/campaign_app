@@ -27,11 +27,12 @@ class AuthViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             try:
                 with get_db_session() as session:
-                    user = User(
-                        username=serializer.validated_data["username"],
-                        email=serializer.validated_data["email"],
-                        role=serializer.validated_data["role"],
-                    )
+                    # user = User(
+                    #     username=serializer.validated_data["username"],
+                    #     email=serializer.validated_data["email"],
+                    #     role=serializer.validated_data["role"],
+                    # )
+                    user = serializer.create(serializer.validated_data)
                     user.set_password(serializer.validated_data["password"])
                     session.add(user)
                     session.commit()
