@@ -9,11 +9,14 @@ from .serializers import (
     LoginSerializer,
     UserSerializer,
     ChangePasswordSerializer,
+    UserRegistrationRequestSerializer,
 )
-from .models import User, UserRoleType
+from .models import User, UserRoleType, UserRegistrationRequest
+from rest_framework.exceptions import ValidationError
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from utils.db_session import get_db_session
+from .services import UserRegistrationRequestService
 
 
 class AuthViewSet(viewsets.ViewSet):
@@ -21,22 +24,25 @@ class AuthViewSet(viewsets.ViewSet):
     def get_csrf_token(self, request):
         return JsonResponse({"csrfToken": get_token(request)})
 
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def signup(self, request):
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 with get_db_session() as session:
-                    # user = User(
-                    #     username=serializer.validated_data["username"],
-                    #     email=serializer.validated_data["email"],
-                    #     role=serializer.validated_data["role"],
-                    # )
+                    # Create user
                     user = serializer.create(serializer.validated_data)
                     user.set_password(serializer.validated_data["password"])
                     session.add(user)
                     session.commit()
                     session.refresh(user)
+
+                    # Create registration request
+                    request_service = UserRegistrationRequestService(session)
+                    registration_request = request_service.create_request(
+                        user_id=user.id,
+                        practice_id=serializer.validated_data["desired_practice_id"],
+                        requested_role=serializer.validated_data["requested_role"],
+                    )
 
                     return Response(
                         UserSerializer(user).data, status=status.HTTP_201_CREATED
@@ -142,3 +148,49 @@ class AuthViewSet(viewsets.ViewSet):
                 return Response(UserSerializer(user).data)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def pending_requests(self, request):
+        with get_db_session() as session:
+            service = UserRegistrationRequestService(session)
+            requests = service.get_pending_requests(request.user.role)
+            return Response(UserRegistrationRequestSerializer(requests, many=True).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def approve_request(self, request, pk=None):
+        try:
+            with get_db_session() as session:
+                service = UserRegistrationRequestService(session)
+                reg_request = service.approve_request(
+                    request_id=int(pk), reviewer_id=request.user.id
+                )
+                return Response(UserRegistrationRequestSerializer(reg_request).data)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def reject_request(self, request, pk=None):
+        reason = request.data.get("reason")
+        if not reason:
+            return Response(
+                {"error": "Rejection reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with get_db_session() as session:
+                service = UserRegistrationRequestService(session)
+                reg_request = service.reject_request(
+                    request_id=int(pk), reviewer_id=request.user.id, reason=reason
+                )
+                return Response(UserRegistrationRequestSerializer(reg_request).data)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

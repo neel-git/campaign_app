@@ -3,7 +3,7 @@ from .models import User, UserRoleType
 from utils.db_session import get_db_session
 from django.utils import timezone
 from practices.models import Practice
-
+from practices.serializers import PracticeSerializer
 
 class SignupSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=255)
@@ -11,6 +11,9 @@ class SignupSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=255, required=False)
     desired_practice_id = serializers.IntegerField(required=False, allow_null=True)
+    requested_role = serializers.ChoiceField(
+        choices=["admin", "practice_user"], required=True
+    )
 
     def validate_username(self, value):
         with get_db_session() as session:
@@ -66,7 +69,7 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     username = serializers.CharField()
-    full_name = serializers.CharField(allow_null = True)
+    full_name = serializers.CharField(allow_null=True)
     email = serializers.EmailField()
     role = serializers.CharField()
     desired_practice_id = serializers.IntegerField(allow_null=True)
@@ -85,3 +88,14 @@ class ChangePasswordSerializer(serializers.Serializer):
                 "Password must be at least 8 characters long"
             )
         return value
+
+class UserRegistrationRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    user_id = serializers.IntegerField(read_only=True)
+    desired_practice_id = serializers.IntegerField()
+    requested_role = serializers.ChoiceField(choices=['admin', 'practice_user'])
+    status = serializers.CharField(read_only=True)
+    rejection_reason = serializers.CharField(read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    user = UserSerializer(read_only=True)
+    practice = PracticeSerializer(read_only=True)
