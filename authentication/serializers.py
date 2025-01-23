@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, UserRoleType
+from .models import User, UserRoles, UserRegistrationRequest, RoleChangeRequest
 from utils.db_session import get_db_session
 from django.utils import timezone
 from practices.models import Practice
@@ -10,11 +10,14 @@ class SignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=255, required=False)
-    desired_practice_id = serializers.IntegerField(required=False, allow_null=True)
+    desired_practice_id = serializers.IntegerField(required=True)
     requested_role = serializers.ChoiceField(
-        choices=["admin", "practice_user"], required=True
+        choices=[
+            (UserRoles.ADMIN, "Admin"), 
+            (UserRoles.PRACTICE_USER, "Practice User")
+        ], 
+        required=True
     )
-
     def validate_username(self, value):
         with get_db_session() as session:
             user = session.query(User).filter(User.username == value).first()
@@ -38,10 +41,9 @@ class SignupSerializer(serializers.Serializer):
         return value
 
     def validate_role(self, value):
-        try:
-            return UserRoleType(value)
-        except ValueError:
+        if value not in [UserRoles.ADMIN, UserRoles.PRACTICE_USER]:
             raise serializers.ValidationError("Invalid role")
+        return value
 
     def create(self, validated_data):
         try:
@@ -49,8 +51,8 @@ class SignupSerializer(serializers.Serializer):
                 username=validated_data["username"],
                 email=validated_data["email"],
                 full_name=validated_data.get("full_name"),
-                role=UserRoleType.practice_user,  # Default role will be Practice_user only
-                desired_practice_id=validated_data.get("desired_practice_id"),
+                role=None, #No default role
+                #desired_practice_id=validated_data.get("desired_practice_id"),
                 is_active=True,
                 created_at=timezone.now(),
             )
@@ -72,7 +74,6 @@ class UserSerializer(serializers.Serializer):
     full_name = serializers.CharField(allow_null=True)
     email = serializers.EmailField()
     role = serializers.CharField()
-    desired_practice_id = serializers.IntegerField(allow_null=True)
     is_active = serializers.BooleanField()
     last_login = serializers.DateTimeField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
@@ -97,5 +98,22 @@ class UserRegistrationRequestSerializer(serializers.Serializer):
     status = serializers.CharField(read_only=True)
     rejection_reason = serializers.CharField(read_only=True, allow_null=True)
     created_at = serializers.DateTimeField(read_only=True)
+    user = UserSerializer(read_only=True)
+    practice = PracticeSerializer(read_only=True)
+
+class RoleChangeRequestSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    user_id = serializers.IntegerField(read_only=True)
+    practice_id = serializers.IntegerField(read_only=True)
+    current_role = serializers.CharField(read_only=True)
+    requested_role = serializers.ChoiceField(
+        choices=[
+            (UserRoles.ADMIN, "Admin"), 
+            (UserRoles.PRACTICE_USER, "Practice User")
+        ]
+    )
+    status = serializers.CharField(read_only=True)
+    requested_at = serializers.DateTimeField(read_only=True)
+    rejection_reason = serializers.CharField(read_only=True, allow_null=True)
     user = UserSerializer(read_only=True)
     practice = PracticeSerializer(read_only=True)

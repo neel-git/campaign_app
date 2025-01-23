@@ -2,7 +2,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .services import PracticeService
 from .serializers import (
     PracticeSerializer,
@@ -10,23 +10,50 @@ from .serializers import (
     PracticeUserAssignmentSerializer,
 )
 from utils.db_session import get_db_session
-from authentication.models import UserRoleType
+from authentication.models import UserRoles
 from rest_framework.exceptions import ValidationError
 
 
 class PracticeViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        """
+        Instantiate and return the list of permissions that this view requires.
+        Allow list action for anyone, require authentication for others
+        """
+        if self.action == "list":
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def list(self, request):
+        """
+        List practices based on user role:
+        - Super admin: sees all practices (active and inactive)
+        - Authenticated users: see all active practices
+        - Unauthenticated users: see all active practices
+        """
         with get_db_session() as session:
             service = PracticeService(session)
-            # Super admins can see all practices, others see only active ones
-            include_inactive = request.user.role == UserRoleType.super_admin
-            practices = service.get_all_practices(include_inactive=include_inactive)
+
+            # Determine if we should include inactive practices
+            if (
+                request.user.is_authenticated
+                and request.user.role == UserRoles.SUPER_ADMIN
+            ):
+                # Super admin sees everything
+                practices = service.get_all_practices(include_inactive=True)
+            else:
+                # Everyone else only sees active practices
+                practices = service.get_all_practices(include_inactive=False)
+
             return Response(PracticeSerializer(practices, many=True).data)
 
+    permission_classes = [IsAuthenticated]
+
     def create(self, request):
-        if request.user.role != UserRoleType.super_admin:
+        """Create a new practice (Super Admin only)"""
+        if request.user.role != UserRoles.SUPER_ADMIN:
             return Response(
                 {"error": "Only super admins can create practices"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -62,38 +89,44 @@ class PracticeViewSet(viewsets.ViewSet):
             return Response(PracticeDetailSerializer(practice).data)
 
     @action(detail=True, methods=["post"])
-    def assign_user(self, request, pk=None):
-        if request.user.role != UserRoleType.super_admin:
+    def approve_user_assignment(self, request, pk=None):
+        """
+        Approve a user's practice assignment request
+        Called when approving user registration
+        """
+        user_id = request.data.get("user_id")
+        role = request.data.get("role")
+
+        if not user_id or not role:
             return Response(
-                {"error": "Only super admins can assign users"},
-                status=status.HTTP_403_FORBIDDEN,
+                {"error": "User ID and role are required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = PracticeUserAssignmentSerializer(
-            data={"practice_id": pk, "user_id": request.data.get("user_id")}
-        )
+        # Check permissions
+        if (request.user.role != UserRoles.SUPER_ADMIN and role == UserRoles.ADMIN) or (
+            request.user.role != UserRoles.ADMIN and role == UserRoles.PRACTICE_USER
+        ):
+            return Response(
+                {"error": "Insufficient permissions"}, status=status.HTTP_403_FORBIDDEN
+            )
 
-        if serializer.is_valid():
-            with get_db_session() as session:
-                service = PracticeService(session)
-                try:
-                    assignment = service.assign_user_to_practice(
-                        practice_id=int(pk),
-                        user_id=serializer.validated_data["user_id"],
-                    )
-                    return Response(
-                        PracticeUserAssignmentSerializer(assignment).data,
-                        status=status.HTTP_201_CREATED,
-                    )
-                except ValidationError as e:
-                    return Response(
-                        {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-                    )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        with get_db_session() as session:
+            service = PracticeService(session)
+            try:
+                assignment = service.assign_user_to_practice(
+                    practice_id=int(pk), user_id=user_id, user_role=role
+                )
+                return Response(
+                    PracticeUserAssignmentSerializer(assignment).data,
+                    status=status.HTTP_201_CREATED,
+                )
+            except ValidationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, pk=None):
         """Update practice details (Super Admin only)"""
-        if request.user.role != UserRoleType.super_admin:
+        if request.user.role != UserRoles.super_admin:
             return Response(
                 {"error": "Only super admins can update practices"},
                 status=status.HTTP_403_FORBIDDEN,
