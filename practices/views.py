@@ -126,7 +126,7 @@ class PracticeViewSet(viewsets.ViewSet):
 
     def update(self, request, pk=None):
         """Update practice details (Super Admin only)"""
-        if request.user.role != UserRoles.super_admin:
+        if request.user.role != UserRoles.SUPER_ADMIN:
             return Response(
                 {"error": "Only super admins can update practices"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -149,3 +149,31 @@ class PracticeViewSet(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def destroy(self, request, pk=None):
+        """Delete practice (Super Admin only)"""
+        if request.user.role != UserRoles.SUPER_ADMIN:
+            return Response(
+                {"error": "Only super admins can delete practices"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            with get_db_session() as session:
+                service = PracticeService(session)
+                practice = service.get_practice(int(pk))
+                if not practice:
+                    return Response(
+                        {"error": "Practice not found"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Delete practice
+                session.delete(practice)
+                session.commit()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

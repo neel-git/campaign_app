@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "corsheaders",
 ]
 
-EXTERNAL_APPS = ["practices", "authentication"]
+EXTERNAL_APPS = ["practices", "authentication", "campaigns"]
 
 INSTALLED_APPS += EXTERNAL_APPS
 
@@ -176,3 +176,11 @@ CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 CSRF_COOKIE_SAMESITE = "Lax"  # or 'None' if needed
 CSRF_COOKIE_HTTPONLY = False  # Allows JavaScript access to the cookie
 SESSION_COOKIE_SAMESITE = "Lax"
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]

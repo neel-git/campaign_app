@@ -33,30 +33,16 @@ class PracticeService:
         """Get practices based on include_inactive flag"""
         try:
             query = self.db.query(Practice)
-            
+
             if not include_inactive:
                 # Only return active practices
                 query = query.filter(Practice.is_active == True)
-            
+
             # Order by name for consistency
             return query.order_by(Practice.name).all()
-            
+
         except Exception as e:
             raise ValidationError(f"Failed to fetch practices: {str(e)}")
-        
-    def update_practice(self, practice_id: int, **kwargs) -> Optional[Practice]:
-        """Update practice details"""
-        practice = self.get_practice(practice_id)
-        if not practice:
-            return None
-
-        for key, value in kwargs.items():
-            if hasattr(practice, key):
-                setattr(practice, key, value)
-
-        self.db.commit()
-        self.db.refresh(practice)
-        return practice
 
     # def assign_user_to_practice(
     #     self, practice_id: int, user_id: int, user_role: str
@@ -128,26 +114,32 @@ class PracticeService:
 
     def update_practice(self, practice_id: int, **kwargs) -> Optional[Practice]:
         """Update practice details"""
-        practice = self.db.query(Practice).filter(Practice.id == practice_id).first()
-        if not practice:
-            raise ValidationError("Practice not found")
-
-        # Check if name is being updated and if it already exists
-        if "name" in kwargs:
-            existing = (
-                self.db.query(Practice)
-                .filter(Practice.name == kwargs["name"], Practice.id != practice_id)
-                .first()
+        try:
+            practice = (
+                self.db.query(Practice).filter(Practice.id == practice_id).first()
             )
-            if existing:
-                raise ValidationError("Practice with this name already exists")
+            if not practice:
+                raise ValidationError("Practice not found")
 
-        # Update allowed fields
-        allowed_fields = ["name", "description", "is_active"]
-        for key, value in kwargs.items():
-            if key in allowed_fields:
-                setattr(practice, key, value)
+            # Check if name is being updated and if it already exists
+            if "name" in kwargs:
+                existing = (
+                    self.db.query(Practice)
+                    .filter(Practice.name == kwargs["name"], Practice.id != practice_id)
+                    .first()
+                )
+                if existing:
+                    raise ValidationError("Practice with this name already exists")
 
-        self.db.commit()
-        self.db.refresh(practice)
-        return practice
+            # Update allowed fields
+            allowed_fields = ["name", "description", "is_active"]
+            for key, value in kwargs.items():
+                if key in allowed_fields:
+                    setattr(practice, key, value)
+
+            self.db.commit()
+            self.db.refresh(practice)
+            return practice
+        except Exception as e:
+            self.db.rollback()
+            raise ValidationError(f"Failed to update practice: {str(e)}")

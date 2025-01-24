@@ -162,7 +162,7 @@ class AuthViewSet(viewsets.ViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
-    def pending_requests(self, request):
+    def pending_request(self, request):
         """Get pending requests based on user role"""
         try:
             with get_db_session() as session:
