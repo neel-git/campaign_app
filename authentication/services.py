@@ -1,6 +1,7 @@
 # authentication/services.py
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from .models import User, UserRoles, UserRegistrationRequest, RoleChangeRequest
 from practices.models import PracticeUserAssignment, Practice
 from rest_framework.exceptions import ValidationError
@@ -198,12 +199,20 @@ class UserRegistrationRequestService:
                 if not request:
                     raise ValidationError("Registration request not found")
 
-                # Create practice assignment
-                self.assign_user_to_practice(
+                # First update user's role
+                user = self.db.query(User).get(request.user_id)
+                if not user:
+                    raise ValidationError("User not found")
+                user.role = request.requested_role
+                user.is_approved = True
+
+                # Then create practice assignment
+                assignment = PracticeUserAssignment(
                     user_id=request.user_id,
                     practice_id=request.desired_practice_id,
-                    role=request.requested_role,
                 )
+                self.db.add(assignment)
+
             else:
                 request = self.db.query(RoleChangeRequest).get(request_id)
                 if not request:
@@ -218,6 +227,7 @@ class UserRegistrationRequestService:
             # Update request status
             request.status = "APPROVED"
             request.reviewed_by = reviewer_id
+            request.reviewed_at = func.now()
 
             self.db.commit()
             self.db.refresh(request)
@@ -248,3 +258,40 @@ class UserRegistrationRequestService:
         except Exception as e:
             self.db.rollback()
             raise ValidationError(f"Failed to reject request: {str(e)}")
+
+    # def handle_request_approval(
+    #     self, request_id: int, request_type: str, reviewer_id: int
+    # ) -> Union[UserRegistrationRequest, RoleChangeRequest]:
+    #     try:
+    #         if request_type == "registration":
+    #             request = self.db.query(UserRegistrationRequest).get(request_id)
+    #             if not request:
+    #                 raise ValidationError("Registration request not found")
+
+    #             # Create practice assignment
+    #             self.assign_user_to_practice(
+    #                 user_id=request.user_id,
+    #                 practice_id=request.desired_practice_id,
+    #                 role=request.requested_role,
+    #             )
+    #         else:
+    #             request = self.db.query(RoleChangeRequest).get(request_id)
+    #             if not request:
+    #                 raise ValidationError("Role change request not found")
+
+    #             # Update user role
+    #             user = self.db.query(User).get(request.user_id)
+    #             if not user:
+    #                 raise ValidationError("User not found")
+    #             user.role = request.requested_role
+
+    #         # Update request status
+    #         request.status = "APPROVED"
+    #         request.reviewed_by = reviewer_id
+
+    #         self.db.commit()
+    #         self.db.refresh(request)
+    #         return request
+    #     except Exception as e:
+    #         self.db.rollback()
+    #         raise ValidationError(f"Failed to approve request: {str(e)}")

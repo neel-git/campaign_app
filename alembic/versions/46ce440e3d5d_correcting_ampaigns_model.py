@@ -36,7 +36,6 @@ def upgrade():
         sa.ForeignKeyConstraint(["campaign_id"], ["campaigns.id"], ondelete="CASCADE"),
     )
 
-    # Index for faster lookups of scheduled campaigns
     op.create_index(
         "ix_campaign_schedules_status_date",
         "campaign_schedules",

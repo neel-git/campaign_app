@@ -4,8 +4,12 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-
-from .models import Campaign, CampaignHistory, CampaignPracticeAssociation
+from .models import (
+    Campaign,
+    CampaignHistory,
+    CampaignPracticeAssociation,
+    CampaignSchedule,
+)
 from usermessages.models import UserMessage
 from authentication.models import User
 from practices.models import Practice, PracticeUserAssignment
@@ -18,42 +22,62 @@ class CampaignService:
 
     def create_campaign(self, data: Dict[str, Any], user: User) -> Campaign:
         """
-        Create a new campaign with proper practice associations based on user role.
-        Super admins can target multiple practices while admins are restricted to their own practice.
+        Create a new campaign with proper practice associations and scheduling if needed.
+        For SCHEDULED campaigns, also creates an entry in campaign_schedules table.
         """
         # Validate unique campaign name
         if self._campaign_name_exists(data["name"]):
             raise ValidationError("Campaign with this name already exists")
 
-        campaign = Campaign(
-            name=data["name"],
-            content=data["content"],
-            description=data.get("description"),
-            campaign_type=(
-                "DEFAULT" if user.role == "Practice by Numbers Support" else "CUSTOM"
-            ),
-            delivery_type=data["delivery_type"],
-            status="DRAFT",
-            created_by=user.id,
-            target_roles=data["target_roles"],
-        )
-
-        # Handle practice associations based on user role
-        if user.role == "Practice by Numbers Support":
-            for practice_id in data["target_practices"]:
-                if not self._practice_exists(practice_id):
-                    raise ValidationError(
-                        f"Practice with id {practice_id} does not exist"
-                    )
-                association = CampaignPracticeAssociation(practice_id=practice_id)
-                campaign.practice_associations.append(association)
-        else:
-            # Admin users can only target their own practice
-            association = CampaignPracticeAssociation(practice_id=user.practice_id)
-            campaign.practice_associations.append(association)
-
         try:
+            # Create the main campaign
+            campaign = Campaign(
+                name=data["name"],
+                content=data["content"],
+                description=data.get("description"),
+                campaign_type=(
+                    "DEFAULT"
+                    if user.role == "Practice by Numbers Support"
+                    else "CUSTOM"
+                ),
+                delivery_type=data["delivery_type"],
+                status="DRAFT",
+                created_by=user.id,
+                target_roles=data["target_roles"],
+            )
+
+            # Handle practice associations based on user role
+            if user.role == "Practice by Numbers Support":
+                for practice_id in data["target_practices"]:
+                    if not self._practice_exists(practice_id):
+                        raise ValidationError(
+                            f"Practice with id {practice_id} does not exist"
+                        )
+                    association = CampaignPracticeAssociation(practice_id=practice_id)
+                    campaign.practice_associations.append(association)
+            else:
+                # Admin users can only target their own practice
+                association = CampaignPracticeAssociation(practice_id=user.practice_id)
+                campaign.practice_associations.append(association)
+
+            # Save the campaign first to get its ID
             self.db.add(campaign)
+            self.db.flush()  # This gets us the campaign ID without committing
+
+            if data["delivery_type"] == "SCHEDULED":
+                if "scheduled_date" not in data:
+                    raise ValidationError(
+                        "Scheduled date is required for SCHEDULED campaigns"
+                    )
+
+                schedule = CampaignSchedule(
+                    campaign_id=campaign.id,
+                    scheduled_date=data["scheduled_date"],
+                    status="PENDING",
+                    created_at=datetime.utcnow(),
+                )
+                self.db.add(schedule)
+
             self.db.commit()
             self.db.refresh(campaign)
 
@@ -61,11 +85,17 @@ class CampaignService:
             self._record_history(
                 campaign.id,
                 "CREATED",
-                f"Campaign created with delivery type: {data['delivery_type']}",
+                f"Campaign created with delivery type: {data['delivery_type']}"
+                + (
+                    f" scheduled for {data['scheduled_date']}"
+                    if data["delivery_type"] == "SCHEDULED"
+                    else ""
+                ),
                 user.id,
             )
 
             return campaign
+
         except Exception as e:
             self.db.rollback()
             raise ValidationError(f"Failed to create campaign: {str(e)}")
@@ -94,13 +124,14 @@ class CampaignService:
             if not target_users:
                 raise ValidationError("No eligible users found for this campaign")
 
+            current_time = datetime.utcnow()
             messages = []
             for target_user in target_users:
                 message = UserMessage(
                     user_id=target_user.id,
                     campaign_id=campaign.id,
                     content=campaign.content,
-                    created_at=func.now(),
+                    created_at=current_time,
                 )
                 messages.append(message)
 
@@ -239,26 +270,31 @@ class CampaignService:
         """Get all eligible users for a campaign based on practices and roles"""
         # Get practice IDs from associations
         practice_ids = [assoc.practice_id for assoc in campaign.practice_associations]
+        target_roles = [
+            (
+                "Admin"
+                if role == "ADMIN"
+                else "Practice User" if role == "PRACTICE USER" else role
+            )
+            for role in campaign.target_roles
+        ]
+        print(f"Practice IDs: {practice_ids}")  # Debug
 
-        # Get user IDs assigned to these practices
-        practice_user_ids = (
-            self.db.query(PracticeUserAssignment.user_id)
-            .filter(PracticeUserAssignment.practice_id.in_(practice_ids))
+        # Get all users first
+        users = (
+            self.db.query(User)
+            .join(PracticeUserAssignment, User.id == PracticeUserAssignment.user_id)
+            .filter(
+                PracticeUserAssignment.practice_id.in_(practice_ids),
+                User.role.in_(target_roles),
+                User.is_active == True,
+                User.is_approved == True,  # Add this condition
+            )
             .distinct()
             .all()
         )
-        user_ids = [id[0] for id in practice_user_ids]
-
-        # Filter users by role and active status
-        return (
-            self.db.query(User)
-            .filter(
-                User.id.in_(user_ids),
-                User.role.in_(campaign.target_roles),
-                User.is_active == True,
-            )
-            .all()
-        )
+        print(f"Found users: {[u.username for u in users]}")  # Debug
+        return users
 
     def _validate_campaign_send(self, campaign: Campaign, user: User):
         """Validate if campaign can be sent"""

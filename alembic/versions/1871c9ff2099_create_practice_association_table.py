@@ -44,7 +44,6 @@ def upgrade():
         "campaign_practice_associations",
         ["practice_id"],
     )
-    # Unique constraint to prevent duplicate associations
     op.create_unique_constraint(
         "uq_campaign_practice",
         "campaign_practice_associations",

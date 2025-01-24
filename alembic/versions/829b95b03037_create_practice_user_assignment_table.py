@@ -41,7 +41,6 @@ def upgrade() -> None:
         ),
     )
 
-    # Create indexes for better query performance
     op.create_index(
         "ix_practice_user_assignments_practice_id",
         "practice_user_assignments",

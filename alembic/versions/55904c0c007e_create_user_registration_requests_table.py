@@ -20,7 +20,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create user_registration_requests table
     op.create_table(
         "user_registration_requests",
         sa.Column("id", sa.BigInteger(), nullable=False),
@@ -55,7 +54,6 @@ def upgrade() -> None:
         ),
     )
 
-    # Create indexes
     op.create_index(
         "ix_user_registration_requests_user_id",
         "user_registration_requests",
@@ -72,10 +70,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Drop indexes
     op.drop_index("ix_user_registration_requests_desired_practice_id")
     op.drop_index("ix_user_registration_requests_status")
     op.drop_index("ix_user_registration_requests_user_id")
 
-    # Drop tables
     op.drop_table("user_registration_requests")

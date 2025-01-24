@@ -35,7 +35,6 @@ def upgrade():
         sa.ForeignKeyConstraint(["performed_by"], ["users.id"], ondelete="CASCADE"),
     )
 
-    # Index for faster history lookups by campaign
     op.create_index(
         "ix_campaign_history_campaign_id", "campaign_history", ["campaign_id"]
     )

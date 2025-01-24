@@ -44,51 +44,6 @@ class PracticeService:
         except Exception as e:
             raise ValidationError(f"Failed to fetch practices: {str(e)}")
 
-    # def assign_user_to_practice(
-    #     self, practice_id: int, user_id: int, user_role: str
-    # ) -> PracticeUserAssignment:
-    #     """
-    #     Assign a user to a practice and update their role
-    #     This will be called during user registration approval
-    #     """
-    #     try:
-    #         with self.db.begin():
-    #             # Check if practice exists
-    #             practice = self.get_practice(practice_id)
-    #             if not practice:
-    #                 raise ValidationError("Practice not found")
-
-    #             # Check if user exists
-    #             user = self.db.query(User).filter(User.id == user_id).first()
-    #             if not user:
-    #                 raise ValidationError("User not found")
-
-    #             # Check if assignment already exists
-    #             existing = (
-    #                 self.db.query(PracticeUserAssignment)
-    #                 .filter_by(practice_id=practice_id, user_id=user_id)
-    #                 .first()
-    #             )
-    #             if existing:
-    #                 raise ValidationError("User is already assigned to this practice")
-
-    #             # Create the practice assignment
-    #             assignment = PracticeUserAssignment(
-    #                 practice_id=practice_id, user_id=user_id
-    #             )
-    #             self.db.add(assignment)
-
-    #             # Update user's role
-    #             user.role = user_role
-    #             user.is_approved = True
-
-    #             self.db.commit()
-    #             self.db.refresh(assignment)
-    #             return assignment
-    #     except Exception as e:
-    #         self.db.rollback()
-    #         raise ValidationError(str(e))
-
     def remove_user_from_practice(self, practice_id: int, user_id: int) -> bool:
         """Remove a user from a practice"""
         assignment = (

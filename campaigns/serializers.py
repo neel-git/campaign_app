@@ -4,6 +4,7 @@ from utils.db_session import get_db_session
 from .models import Campaign, CampaignPracticeAssociation
 from authentication.serializers import UserSerializer
 from practices.serializers import PracticeSerializer
+from datetime import datetime, timezone
 
 
 class CampaignPracticeAssociationSerializer(serializers.Serializer):
@@ -41,6 +42,7 @@ class CampaignSerializer(serializers.Serializer):
     practice_associations = CampaignPracticeAssociationSerializer(
         many=True, read_only=True
     )
+    scheduled_date = serializers.DateTimeField(required=False)
     creator = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
@@ -55,11 +57,24 @@ class CampaignSerializer(serializers.Serializer):
 
     def validate(self, data):
         """
-        Custom validation to enforce business rules around campaign creation
+        Custom validation to enforce business rules around campaign creation and handle role format conversion
         """
         request = self.context.get("request")
         if not request or not request.user:
             raise serializers.ValidationError("Authentication required")
+
+        # First, convert the target roles from frontend format to backend format
+        # Frontend sends: 'ADMIN', 'PRACTICE USER'
+        # Backend expects: 'Admin', 'Practice User'
+        if "target_roles" in data:
+            data["target_roles"] = [
+                (
+                    "Admin"
+                    if role == "ADMIN"
+                    else "Practice User" if role == "PRACTICE USER" else role
+                )
+                for role in data["target_roles"]
+            ]
 
         # Validate campaign type based on user role
         if (
@@ -73,6 +88,7 @@ class CampaignSerializer(serializers.Serializer):
         # Validate target roles based on user role
         if request.user.role == "Admin":
             # Admins can only target practice users
+            # Note: We're now checking against 'Practice User' (backend format)
             invalid_roles = [
                 role for role in data.get("target_roles", []) if role != "Practice User"
             ]
@@ -89,6 +105,25 @@ class CampaignSerializer(serializers.Serializer):
             ):
                 raise serializers.ValidationError(
                     "Admins can only target their own practice"
+                )
+
+        if data.get("delivery_type") == "SCHEDULED" and not data.get("scheduled_date"):
+            raise serializers.ValidationError(
+                {"scheduled_date": "Scheduled date is required for SCHEDULED campaigns"}
+            )
+
+        if data.get("scheduled_date") and data.get("delivery_type") != "SCHEDULED":
+            raise serializers.ValidationError(
+                {
+                    "scheduled_date": "Scheduled date should only be provided for SCHEDULED campaigns"
+                }
+            )
+
+        # Validate that scheduled date is in the future
+        if data.get("scheduled_date"):
+            if data["scheduled_date"] <= datetime.now(timezone.utc):
+                raise serializers.ValidationError(
+                    {"scheduled_date": "Scheduled date must be in the future"}
                 )
 
         return data

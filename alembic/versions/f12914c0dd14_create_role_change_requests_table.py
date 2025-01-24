@@ -33,7 +33,7 @@ def upgrade() -> None:
         ),
         sa.Column("reviewed_by", sa.BigInteger(), nullable=True),
         sa.Column("rejection_reason", sa.String(500), nullable=True),
-        # Foreign Key Constraints
+        
         sa.ForeignKeyConstraint(
             ["user_id"], ["users.id"], name="fk_role_change_user_id", ondelete="CASCADE"
         ),
@@ -56,7 +56,6 @@ def upgrade() -> None:
         sa.Index("idx_role_change_requested_at", "requested_at"),
     )
 
-    # Add a check constraint for valid status values
     op.execute(
         """
         ALTER TABLE role_change_requests 

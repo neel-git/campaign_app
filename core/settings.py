@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "corsheaders",
 ]
 
-EXTERNAL_APPS = ["practices", "authentication", "campaigns"]
+EXTERNAL_APPS = ["practices", "authentication", "campaigns","usermessages"]
 
 INSTALLED_APPS += EXTERNAL_APPS
 

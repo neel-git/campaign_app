@@ -4,7 +4,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from django.utils import timezone
-import enum
 import bcrypt
 from datetime import timedelta
 from .mixins import AuthenticationMixin
