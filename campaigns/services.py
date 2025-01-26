@@ -273,8 +273,8 @@ class CampaignService:
         target_roles = [
             (
                 "Admin"
-                if role == "ADMIN"
-                else "Practice User" if role == "PRACTICE USER" else role
+                if role == "Admin"
+                else "Practice User" if role == "Practice User" else role
             )
             for role in campaign.target_roles
         ]

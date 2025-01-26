@@ -168,7 +168,7 @@ class PracticeViewSet(viewsets.ViewSet):
                         status=status.HTTP_404_NOT_FOUND
                     )
                 
-                # Delete practice
+                # Delete practicea
                 session.delete(practice)
                 session.commit()
                 return Response(status=status.HTTP_204_NO_CONTENT)
