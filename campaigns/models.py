@@ -28,15 +28,13 @@ class Campaign(Base):
     created_by = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # For targeting specific audiences
     target_roles = Column(JSON, nullable=False)  # List of role strings
 
     # For copied campaigns
     copied_from = Column(BigInteger, ForeignKey("campaigns.id"), nullable=True)
 
     # Relationships
-    creator = relationship("User", backref="created_campaigns")
+    creator = relationship("User", backref="created_campaigns", foreign_keys=[created_by])
     practice_associations = relationship(
         "CampaignPracticeAssociation",
         back_populates="campaign",

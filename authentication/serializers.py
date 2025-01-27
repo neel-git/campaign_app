@@ -64,14 +64,12 @@ class SignupSerializer(serializers.Serializer):
                 email=validated_data["email"],
                 full_name=validated_data.get("full_name"),
                 role=None,  # No default role
-                # desired_practice_id=validated_data.get("desired_practice_id"),
                 is_active=True,
                 created_at=timezone.now(),
             )
             user.set_password(validated_data["password"])
             return user
         except Exception as e:
-            print(f"Error in create method: {str(e)}")  # logging
             raise
 
 

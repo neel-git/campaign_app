@@ -32,6 +32,9 @@ class User(Base, AuthenticationMixin):
     session_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    campaigns = relationship(
+        "Campaign", back_populates="creator", foreign_keys="[Campaign.created_by]"
+    )
 
     def set_password(self, raw_password):
         hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt())
@@ -74,6 +77,7 @@ class UserRegistrationRequest(Base):
         "User", foreign_keys=[reviewed_by], backref="reviewed_requests"
     )
     practice = relationship("Practice", backref="registration_requests")
+    
 
 
 class RoleChangeRequest(Base):

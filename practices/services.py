@@ -98,3 +98,22 @@ class PracticeService:
         except Exception as e:
             self.db.rollback()
             raise ValidationError(f"Failed to update practice: {str(e)}")
+        
+    def get_user_practice(self, user_id: int) -> Optional[Practice]:
+        """Get the practice a user is assigned to"""
+        try:
+            # Find the practice assignment for this user
+            assignment = (
+                self.db.query(PracticeUserAssignment)
+                .filter(PracticeUserAssignment.user_id == user_id)
+                .first()
+            )
+            
+            if assignment:
+                # Get the practice details
+                practice = self.get_practice(assignment.practice_id)
+                return practice
+                
+            return None
+        except Exception as e:
+            raise ValidationError(f"Failed to fetch user's practice: {str(e)}")

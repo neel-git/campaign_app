@@ -177,3 +177,24 @@ class PracticeViewSet(viewsets.ViewSet):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_practice(self, request):
+        """Get the practice details for the current user"""
+        try:
+            with get_db_session() as session:
+                service = PracticeService(session)
+                practice = service.get_user_practice(request.user.id)
+                
+                if not practice:
+                    return Response(
+                        {"error": "No practice assignment found"}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                    
+                return Response(PracticeSerializer(practice).data)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )

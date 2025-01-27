@@ -21,11 +21,6 @@ class CampaignViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        """
-        List campaigns based on user role and permissions
-        Super admins see all campaigns
-        Admins see their own campaigns and DEFAULT campaigns
-        """
         with get_db_session() as session:
             service = CampaignService(session)
             try:
@@ -34,14 +29,18 @@ class CampaignViewSet(viewsets.ViewSet):
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
     def create(self, request):
-        """
-        Create a new campaign with proper validation and practice associations
-        """
-        serializer = CampaignSerializer(data=request.data, context={"request": request})
-        if serializer.is_valid():
-            try:
-                with get_db_session() as session:
+        with get_db_session() as session:
+            serializer = CampaignSerializer(
+                data=request.data,
+                context={
+                    "request": request,
+                    "db_session": session,
+                },  # Pass session in context
+            )
+            if serializer.is_valid():
+                try:
                     service = CampaignService(session)
                     campaign = service.create_campaign(
                         serializer.validated_data, request.user
@@ -50,9 +49,11 @@ class CampaignViewSet(viewsets.ViewSet):
                         CampaignSerializer(campaign).data,
                         status=status.HTTP_201_CREATED,
                     )
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    return Response(
+                        {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+                    )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk=None):
         """
@@ -145,5 +146,15 @@ class CampaignViewSet(viewsets.ViewSet):
                 )
 
                 return Response(CampaignHistorySerializer(history, many=True).data)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["GET"])
+    def my_campaign(self, request):
+        with get_db_session() as session:
+            try:
+                service = CampaignService(session, request.user)
+                campaigns = service.get_user_campaigns(request.user.id)
+                return Response(CampaignListSerializer(campaigns, many=True).data)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
