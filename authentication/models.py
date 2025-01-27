@@ -2,8 +2,8 @@
 from sqlalchemy import Column, String, BigInteger, Enum, Boolean, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from django.utils import timezone
-import enum
 import bcrypt
 from datetime import timedelta
 from .mixins import AuthenticationMixin
@@ -11,11 +11,10 @@ from .mixins import AuthenticationMixin
 Base = declarative_base()
 
 
-class UserRoleType(enum.Enum):
-    __enum_name__ = "user_role_type"
-    super_admin = "Practice by Numbers Support"
-    admin = "Admin"
-    practice_user = "Practice User"
+class UserRoles:
+    SUPER_ADMIN = "Practice by Numbers Support"
+    ADMIN = "Admin"
+    PRACTICE_USER = "Practice User"
 
 
 class User(Base, AuthenticationMixin):
@@ -26,13 +25,16 @@ class User(Base, AuthenticationMixin):
     full_name = Column(String(255), nullable=True)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRoleType), nullable=False)
-    desired_practice_id = Column(BigInteger, nullable=True)
-    is_active = Column(Boolean, default=True)
+    role = Column(String(50), nullable=True)
+    is_approved = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True, nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
     session_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    campaigns = relationship(
+        "Campaign", back_populates="creator", foreign_keys="[Campaign.created_by]"
+    )
 
     def set_password(self, raw_password):
         hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt())
@@ -54,3 +56,44 @@ class User(Base, AuthenticationMixin):
         if not self.session_expires_at:
             return False
         return timezone.now() <= self.session_expires_at
+
+
+class UserRegistrationRequest(Base):
+    __tablename__ = "user_registration_requests"
+
+    id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    desired_practice_id = Column(BigInteger, ForeignKey("practices.id"), nullable=False)
+    requested_role = Column(String(50), nullable=False)
+    status = Column(String(20), default="PENDING")  # PENDING, APPROVED, REJECTED
+    reviewed_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    rejection_reason = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Add relationships for easier data access
+    user = relationship("User", foreign_keys=[user_id], backref="registration_request")
+    reviewer = relationship(
+        "User", foreign_keys=[reviewed_by], backref="reviewed_requests"
+    )
+    practice = relationship("Practice", backref="registration_requests")
+    
+
+
+class RoleChangeRequest(Base):
+    __tablename__ = "role_change_requests"
+
+    id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"))
+    practice_id = Column(BigInteger, ForeignKey("practices.id"))
+    current_role = Column(String(50), nullable=False)
+    requested_role = Column(String(50), nullable=False)
+    status = Column(String(20), default="PENDING")  # PENDING, APPROVED, REJECTED
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewed_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    rejection_reason = Column(String(500), nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+    practice = relationship("Practice")
