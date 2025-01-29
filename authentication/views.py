@@ -337,7 +337,7 @@ class AuthViewSet(viewsets.ViewSet):
                     else:
                         req = session.query(UserRegistrationRequest).get(int(pk))
 
-                    if not req or req.practice_id != practice_assignment.practice_id:
+                    if not req or req.desired_practice_id != practice_assignment.practice_id:
                         return Response(
                             {"error": "Request not found"},
                             status=status.HTTP_404_NOT_FOUND,
