@@ -10,7 +10,6 @@ from sqlalchemy import and_
 @app.task
 def check_scheduled_campaigns():
     """Check and process any pending scheduled campaigns"""
-    print("Starting scheduled campaigns check...")
     with get_db_session() as session:
         try:
             pending_schedules = (

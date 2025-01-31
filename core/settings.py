@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get("application.secret_key")
-# print(config.get("application.secret_key"))
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config.get("application.debug", False)
 
@@ -89,17 +89,6 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 load_dotenv()
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.environ.get("DB_NAME"),
-#         "USER": os.environ.get("DB_USER"),
-#         "PASSWORD": os.environ.get("DB_PASSWORD"),
-#         "HOST": os.environ.get("DB_HOST", "localhost"),
-#         "PORT": os.environ.get("DB_PORT", "5432"),
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": config.get("database.engine"),
@@ -110,7 +99,6 @@ DATABASES = {
         "PORT": config.get("database.port"),
     }
 }
-# print("Database Name:", os.getenv('DB_NAME'))
 
 
 # Password validation
@@ -162,9 +150,6 @@ SQLALCHEMY_DATABASE_URI = (
 )
 
 REST_FRAMEWORK = {
-    # "DEFAULT_AUTHENTICATION_CLASSES": [
-    #     "rest_framework.authentication.SessionAuthentication",
-    # ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "authentication.backends.SessionAuthentication",
     ],
@@ -174,7 +159,6 @@ REST_FRAMEWORK = {
 }
 
 
-# AUTH_USER_MODEL = "authentication.DjangoUser"
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 86400  # 24 hours in seconds
@@ -200,7 +184,6 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-# CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
 CELERY_BROKER_URL = config.get("celery.broker_url")
 CELERY_RESULT_BACKEND = config.get("celery.result_backend")
 CELERY_ACCEPT_CONTENT = ["json"]
