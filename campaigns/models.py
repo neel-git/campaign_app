@@ -77,7 +77,12 @@ class CampaignHistory(Base):
     details = Column(Text, nullable=True)
     performed_by = Column(BigInteger, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+    
+    performer = relationship(
+        "User",
+        foreign_keys=[performed_by],
+        backref="campaign_history_entries"
+    )
 
 class CampaignPracticeAssociation(Base):
     """Associates campaigns with target practices"""

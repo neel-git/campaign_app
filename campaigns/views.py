@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .services import CampaignService
-from .models import CampaignHistory
+from .models import CampaignHistory,Campaign
 from .serializers import (
     CampaignSerializer,
     CampaignListSerializer,
@@ -28,7 +28,6 @@ class CampaignViewSet(viewsets.ViewSet):
                 return Response(CampaignListSerializer(campaigns, many=True).data)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 
     def create(self, request):
         with get_db_session() as session:
@@ -122,32 +121,32 @@ class CampaignViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=["get"])
-    def history(self, request, pk=None):
-        """
-        Get campaign history entries
-        """
-        with get_db_session() as session:
-            service = CampaignService(session)
-            try:
-                campaign = service._get_campaign(int(pk))
-                if not campaign:
-                    return Response(
-                        {"error": "Campaign not found"},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
+    # @action(detail=True, methods=["get"])
+    # def history(self, request, pk=None):
+    #     """
+    #     Get campaign history entries
+    #     """
+    #     with get_db_session() as session:
+    #         service = CampaignService(session)
+    #         try:
+    #             campaign = service._get_campaign(int(pk))
+    #             if not campaign:
+    #                 return Response(
+    #                     {"error": "Campaign not found"},
+    #                     status=status.HTTP_404_NOT_FOUND,
+    #                 )
 
-                # Get campaign history
-                history = (
-                    session.query(CampaignHistory)
-                    .filter(CampaignHistory.campaign_id == pk)
-                    .order_by(CampaignHistory.created_at.desc())
-                    .all()
-                )
+    #             # Get campaign history
+    #             history = (
+    #                 session.query(CampaignHistory)
+    #                 .filter(CampaignHistory.campaign_id == pk)
+    #                 .order_by(CampaignHistory.created_at.desc())
+    #                 .all()
+    #             )
 
-                return Response(CampaignHistorySerializer(history, many=True).data)
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    #             return Response(CampaignHistorySerializer(history, many=True).data)
+    #         except Exception as e:
+    #             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["GET"])
     def my_campaign(self, request):
@@ -156,5 +155,32 @@ class CampaignViewSet(viewsets.ViewSet):
                 service = CampaignService(session, request.user)
                 campaigns = service.get_user_campaigns(request.user.id)
                 return Response(CampaignListSerializer(campaigns, many=True).data)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """
+        Get campaign history entries with related user data
+        """
+        with get_db_session() as session:
+            try:
+                # Get campaign
+                campaign = session.query(Campaign).get(int(pk))
+                if not campaign:
+                    return Response(
+                        {"error": "Campaign not found"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+
+                # Get campaign history with user data
+                history = (
+                    session.query(CampaignHistory)
+                    .filter(CampaignHistory.campaign_id == pk)
+                    .order_by(CampaignHistory.created_at.desc())
+                    .all()
+                )
+
+                return Response(CampaignHistorySerializer(history, many=True).data)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -61,17 +61,14 @@ class CampaignSerializer(serializers.Serializer):
         Custom validation to enforce business rules around campaign creation and handle role format conversion
         """
         request = self.context.get("request")
-        db_session = self.context.get("db_session") 
+        db_session = self.context.get("db_session")
 
         if not request or not request.user:
             raise serializers.ValidationError("Authentication required")
-        
+
         if not db_session:
             raise serializers.ValidationError("Database session required")
-        
-        # First, convert the target roles from frontend format to backend format
-        # Frontend sends: 'ADMIN', 'PRACTICE USER'
-        # Backend expects: 'Admin', 'Practice User'
+
         if "target_roles" in data:
             data["target_roles"] = [
                 (
@@ -105,9 +102,9 @@ class CampaignSerializer(serializers.Serializer):
 
             # Get admin's practice ID from practice_user_assignments
             practice_assignment = (
-            db_session.query(PracticeUserAssignment)  # Use db_session from context
-            .filter(PracticeUserAssignment.user_id == request.user.id)
-            .first()
+                db_session.query(PracticeUserAssignment)  # Use db_session from context
+                .filter(PracticeUserAssignment.user_id == request.user.id)
+                .first()
             )
 
             if not practice_assignment:
@@ -122,15 +119,6 @@ class CampaignSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "Admins can only target their own practice"
                 )
-            # # Admins must target their own practice
-            # practice_id = request.user.practice_id
-            # if data.get("target_practices") and (
-            #     len(data["target_practices"]) != 1
-            #     or data["target_practices"][0] != practice_id
-            # ):
-            #     raise serializers.ValidationError(
-            #         "Admins can only target their own practice"
-            #     )
 
         if data.get("delivery_type") == "SCHEDULED" and not data.get("scheduled_date"):
             raise serializers.ValidationError(
@@ -185,8 +173,12 @@ class CampaignHistorySerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
     def get_performed_by(self, obj):
-        return {
-            "id": obj.performed_by,
-            "full_name": obj.performer.full_name,
-            "role": obj.performer.role,
-        }
+        return (
+            {
+                "id": obj.performer.id,
+                "full_name": obj.performer.full_name,
+                "role": obj.performer.role,
+            }
+            if obj.performer
+            else None
+        )
