@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from utils.config_loader import ConfigurationLoader
+
+
+config = ConfigurationLoader()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-n6$0haod_5!3v0p41ru6=y!nro@g*m%5i-=x&9$&-zuyc4445$"
-
+SECRET_KEY = config.get("application.secret_key")
+# print(config.get("application.secret_key"))
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config.get("application.debug", False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config.get("application.allowed_hosts", [])
 
 
 # Application definition
@@ -85,14 +89,25 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 load_dotenv()
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.environ.get("DB_NAME"),
+#         "USER": os.environ.get("DB_USER"),
+#         "PASSWORD": os.environ.get("DB_PASSWORD"),
+#         "HOST": os.environ.get("DB_HOST", "localhost"),
+#         "PORT": os.environ.get("DB_PORT", "5432"),
+#     }
+# }
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME"),
-        "USER": os.environ.get("DB_USER"),
-        "PASSWORD": os.environ.get("DB_PASSWORD"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
+        "ENGINE": config.get("database.engine"),
+        "NAME": config.get("database.name"),
+        "USER": config.get("database.user"),
+        "PASSWORD": config.get("database.password"),
+        "HOST": config.get("database.host"),
+        "PORT": config.get("database.port"),
     }
 }
 # print("Database Name:", os.getenv('DB_NAME'))
@@ -185,9 +200,9 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-# Celery Configuration
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
+# CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
+CELERY_BROKER_URL = config.get("celery.broker_url")
+CELERY_RESULT_BACKEND = config.get("celery.result_backend")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"

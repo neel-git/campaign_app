@@ -11,7 +11,6 @@ class PracticeService:
         self.db = db_session
 
     def create_practice(self, name: str, description: Optional[str] = None) -> Practice:
-        """Create a new practice"""
         existing = self.db.query(Practice).filter(Practice.name == name).first()
         if existing:
             raise ValidationError("Practice with this name already exists")
@@ -23,7 +22,6 @@ class PracticeService:
         return practice
 
     def get_practice(self, practice_id: int) -> Optional[Practice]:
-        """Get a single practice by ID"""
         try:
             return self.db.query(Practice).filter(Practice.id == practice_id).first()
         except Exception as e:
