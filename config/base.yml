@@ -1,0 +1,24 @@
+application:
+  name: Campaign Management
+  debug: false
+  secret_key: ${DJANGO_SECRET_KEY}
+  allowed_hosts:
+    - localhost
+    - 127.0.0.1
+
+database:
+  engine: django.db.backends.postgresql
+  name : ${DB_NAME}
+  user : ${DB_USER}
+  password : ${DB_PASSWORD}
+  host : ${DB_HOST}
+  port : ${DB_PORT}
+
+redis:
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT}
+  db: 0
+
+celery:
+  broker_url: ${CELERY_BROKER_URL}
+  result_backend: ${CELERY_RESULT_BACKEND}

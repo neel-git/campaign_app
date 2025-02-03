@@ -1,29 +1,21 @@
 from logging.config import fileConfig
-import sys
-import os
+
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
+import sys
+import os
 from alembic import context
-
 from authentication.models import Base as AuthBase
-from practices.models import Practice, PracticeUserAssignment
+from practices.models import Base as PracticeBase
 from authentication.models import User
 from core.settings import SQLALCHEMY_DATABASE_URI
 
-#sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # new lines added(1+below 3)
-# import django
 
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
-# django.setup()
-
-# from django.conf import settings
-
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
-# config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)  # new line
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -34,11 +26,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = AuthBase.metadata
-
-# Set sqlalchemy.url
-config.set_main_option('sqlalchemy.url', SQLALCHEMY_DATABASE_URI) #New line 16/01/2025
-
+target_metadata = [AuthBase, PracticeBase]
+config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URI)
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")

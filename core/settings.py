@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from utils.config_loader import ConfigurationLoader
+
+
+config = ConfigurationLoader()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-n6$0haod_5!3v0p41ru6=y!nro@g*m%5i-=x&9$&-zuyc4445$"
+SECRET_KEY = config.get("application.secret_key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config.get("application.debug", False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config.get("application.allowed_hosts", [])
 
 
 # Application definition
@@ -40,9 +44,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "corsheaders",
 ]
 
-EXTERNAL_APPS = ["practices", "authentication"]
+EXTERNAL_APPS = ["practices", "authentication", "campaigns", "usermessages"]
 
 INSTALLED_APPS += EXTERNAL_APPS
 
@@ -55,6 +60,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "authentication.middleware.CustomAuthMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -85,15 +91,14 @@ load_dotenv()
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME"),
-        "USER": os.environ.get("DB_USER"),
-        "PASSWORD": os.environ.get("DB_PASSWORD"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
+        "ENGINE": config.get("database.engine"),
+        "NAME": config.get("database.name"),
+        "USER": config.get("database.user"),
+        "PASSWORD": config.get("database.password"),
+        "HOST": config.get("database.host"),
+        "PORT": config.get("database.port"),
     }
 }
-# print("Database Name:", os.getenv('DB_NAME'))
 
 
 # Password validation
@@ -145,9 +150,6 @@ SQLALCHEMY_DATABASE_URI = (
 )
 
 REST_FRAMEWORK = {
-    # "DEFAULT_AUTHENTICATION_CLASSES": [
-    #     "rest_framework.authentication.SessionAuthentication",
-    # ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "authentication.backends.SessionAuthentication",
     ],
@@ -156,8 +158,35 @@ REST_FRAMEWORK = {
     ],
 }
 
-# AUTH_USER_MODEL = "authentication.DjangoUser"
+
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 86400  # 24 hours in seconds
 SESSION_SAVE_EVERY_REQUEST = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
+
+CSRF_COOKIE_SAMESITE = "Lax"  # or 'None' if needed
+CSRF_COOKIE_HTTPONLY = False  # Allows JavaScript access to the cookie
+SESSION_COOKIE_SAMESITE = "Lax"
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CELERY_BROKER_URL = config.get("celery.broker_url")
+CELERY_RESULT_BACKEND = config.get("celery.result_backend")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
