@@ -1,0 +1,73 @@
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://neelkamals:kamal1234@db:5432/campaigndb_test
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+
+  celery_worker:
+    build: .
+    command: celery -A core worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+      - redis
+    env_file:
+      - .env
+    entrypoint: []  # Override the default entrypoint for worker
+
+  celery_beat:
+    build: .
+    command: celery -A core beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+      - redis
+    env_file:
+      - .env
+    entrypoint: []  # Override the default entrypoint for beat
+
+  flower:
+    build: .
+    command: celery -A core flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - web
+      - redis
+      - celery_worker
+    env_file:
+      - .env
+    entrypoint: []  # Override the default entrypoint for flower
+
+  db:
+    image: postgres:17
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=campaigndb_test
+      - POSTGRES_USER=neelkamals
+      - POSTGRES_PASSWORD=kamal1234
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "listen_addresses=*"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

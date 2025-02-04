@@ -97,7 +97,7 @@ DATABASES = {
         "PASSWORD": config.get("database.password"),
         "HOST": config.get("database.host"),
         "PORT": config.get("database.port"),
-    }
+    },
 }
 
 

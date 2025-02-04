@@ -9,7 +9,7 @@ from authentication.models import Base, User
 class Practice(Base):
     __tablename__ = "practices"
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(String(255), unique=True, nullable=False)
     description = Column(String(500),nullable=True)
     is_active = Column(Boolean, default=True)

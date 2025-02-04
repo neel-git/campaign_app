@@ -3,6 +3,7 @@
 celerybeat-schedule.bak
 celerybeat-schedule.dat
 celerybeat-schedule.dir
+.htmlcov
 
 __pycache__/
 
