@@ -97,7 +97,7 @@ DATABASES = {
         "PASSWORD": config.get("database.password"),
         "HOST": config.get("database.host"),
         "PORT": config.get("database.port"),
-    }
+    },
 }
 
 
@@ -172,8 +172,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
-CSRF_COOKIE_SAMESITE = "Lax"  # or 'None' if needed
-CSRF_COOKIE_HTTPONLY = False  # Allows JavaScript access to the cookie
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
 CORS_ALLOW_METHODS = [
     "DELETE",

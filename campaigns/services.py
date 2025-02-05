@@ -26,7 +26,6 @@ class CampaignService:
             raise ValidationError("Campaign with this name already exists")
 
         try:
-            # Set campaign type based on user role
             campaign_type = (
                 "DEFAULT" if user.role == UserRoles.SUPER_ADMIN else "CUSTOM"
             )
@@ -109,23 +108,16 @@ class CampaignService:
     def send_immediate_campaign(
         self, campaign_id: int, user: User
     ) -> List[UserMessage]:
-        """
-        Send an immediate campaign to all eligible users based on practice associations
-        and target roles.
-        """
         campaign = self._get_campaign(campaign_id)
         if not campaign:
             raise ValidationError("Campaign not found")
 
-        # Verify permissions and campaign state
         self._validate_campaign_send(campaign, user)
 
         try:
-            # Update campaign status to IN_PROGRESS
             campaign.status = "IN_PROGRESS"
             self.db.commit()
 
-            # Get target users and create messages
             target_users = self._get_target_users(campaign)
             if not target_users:
                 raise ValidationError("No eligible users found for this campaign")
@@ -161,64 +153,77 @@ class CampaignService:
             campaign.status = "FAILED"
             self.db.commit()
             raise ValidationError(f"Failed to send campaign: {str(e)}")
-
-    def update_campaign(
-        self, campaign_id: int, data: Dict[str, Any], user: User
-    ) -> Campaign:
-        campaign = self._get_campaign(campaign_id)
-        if not campaign:
-            raise ValidationError("Campaign not found")
-
-        # Verify update permissions
-        if not self._can_modify_campaign(campaign, user):
-            raise ValidationError("Not authorized to modify this campaign")
-
-        # Validate name uniqueness if being updated
-        if "name" in data and data["name"] != campaign.name:
-            if self._campaign_name_exists(data["name"]):
-                raise ValidationError("Campaign with this name already exists")
-
+    
+    def update_campaign(self, campaign_id: int, data: Dict[str, Any], user: User) -> Campaign:
         try:
-            # Update basic fields
-            for key in [
-                "name",
-                "content",
-                "description",
-                "delivery_type",
-                "target_roles",
-            ]:
-                if key in data:
-                    setattr(campaign, key, data[key])
+            campaign = self._get_campaign(campaign_id)
+            if not campaign:
+                raise ValidationError(f"Campaign with id {campaign_id} not found")
 
-            if (
-                user.role == "Practice by Numbers Support"
-                and "target_practices" in data
-            ):
-                campaign.practice_associations = []
+            if not self._can_modify_campaign(campaign, user):
+                raise ValidationError(
+                    f"User {user.id} not authorized to modify campaign {campaign_id}"
+                )
+
+            if "name" in data and data["name"] != campaign.name:
+                    existing = self._campaign_name_exists(data["name"])
+                    if existing:
+                        raise ValidationError(
+                            f"Campaign with name '{data['name']}' already exists"
+                        )
+
+
+            updated_fields = []
+            
+            for field in ["name", "content", "description", "delivery_type", "target_roles"]:
+                if field in data:
+                    setattr(campaign, field, data[field])
+                    updated_fields.append(field)
+
+            if user.role == "Practice by Numbers Support" and "target_practices" in data:
+                for assoc in list(campaign.practice_associations):
+                    self.db.delete(assoc)
+                
                 for practice_id in data["target_practices"]:
-                    if self._practice_exists(practice_id):
+                    if not self._practice_exists(practice_id):
+                        raise ValidationError(f"Practice {practice_id} does not exist")
+                    
+                    existing_assoc = (
+                        self.db.query(CampaignPracticeAssociation)
+                        .filter_by(campaign_id=campaign_id, practice_id=practice_id)
+                        .first()
+                    )
+                    
+                    if not existing_assoc:
                         association = CampaignPracticeAssociation(
+                            campaign_id=campaign_id, 
                             practice_id=practice_id
                         )
-                        campaign.practice_associations.append(association)
+                        self.db.add(association)
+                
+                updated_fields.append("target_practices")
 
             campaign.updated_at = func.now()
             self.db.commit()
             self.db.refresh(campaign)
 
-            # Record update in history
             self._record_history(
-                campaign.id, "UPDATED", "Campaign details updated", user.id
+                campaign.id,
+                "UPDATED",
+                f"Updated fields: {', '.join(updated_fields)}",
+                user.id
             )
 
             return campaign
 
         except Exception as e:
             self.db.rollback()
+            if isinstance(e, ValidationError):
+                raise
             raise ValidationError(f"Failed to update campaign: {str(e)}")
+    
 
     def delete_campaign(self, campaign_id: int, user: User) -> bool:
-        """Delete a campaign and all its associated data"""
         campaign = self._get_campaign(campaign_id)
         if not campaign:
             raise ValidationError("Campaign not found")
@@ -227,7 +232,6 @@ class CampaignService:
             raise ValidationError("Not authorized to delete this campaign")
 
         try:
-            # Record deletion in history before deleting
             self._record_history(campaign.id, "DELETED", "Campaign deleted", user.id)
 
             self.db.delete(campaign)
@@ -239,12 +243,11 @@ class CampaignService:
             raise ValidationError(f"Failed to delete campaign: {str(e)}")
 
     def list_campaigns(self, user: User) -> List[Campaign]:
-        """List campaigns based on user role and access rights"""
+
         try:
             query = self.db.query(Campaign)
 
             if user.role == "Practice by Numbers Support":
-                # Super admins see all campaigns
                 return query.all()
             elif user.role == "Admin":
                 return query.filter(
@@ -273,7 +276,6 @@ class CampaignService:
             for role in campaign.target_roles
         ]
         
-        # Get all users first
         users = (
             self.db.query(User)
             .join(PracticeUserAssignment, User.id == PracticeUserAssignment.user_id)
@@ -289,7 +291,6 @@ class CampaignService:
         return users
 
     def _validate_campaign_send(self, campaign: Campaign, user: User):
-        """Validate if campaign can be sent"""
         if campaign.status != "DRAFT":
             raise ValidationError("Only DRAFT campaigns can be sent")
 
@@ -300,14 +301,12 @@ class CampaignService:
             raise ValidationError("Not authorized to send this campaign")
 
     def _can_modify_campaign(self, campaign: Campaign, user: User) -> bool:
-        """Check if user has permission to modify/delete campaign"""
         if user.role == "Practice by Numbers Support":
             return True
         if user.role == "Admin":
             return campaign.created_by == user.id
         return False
 
-    # Helper methods for validation and DB operations
     def _campaign_name_exists(self, name: str) -> bool:
         return self.db.query(Campaign).filter(Campaign.name == name).first() is not None
 
@@ -323,7 +322,6 @@ class CampaignService:
     def _record_history(
         self, campaign_id: int, action: str, details: str, user_id: int
     ):
-        """Record campaign action in history"""
         history = CampaignHistory(
             campaign_id=campaign_id,
             action=action,
@@ -344,8 +342,8 @@ class CampaignService:
             elif self.user.role == UserRoles.ADMIN:
                 campaigns = (
                     query.filter(
-                        Campaign.created_by == user_id,  # Only their own campaigns
-                        Campaign.campaign_type == "CUSTOM",  # Only CUSTOM type
+                        Campaign.created_by == user_id,
+                        Campaign.campaign_type == "CUSTOM",
                     )
                     .order_by(Campaign.created_at.desc())
                     .all()

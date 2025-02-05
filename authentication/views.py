@@ -163,16 +163,12 @@ class AuthViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def pending_request(self, request):
-        """Get pending requests based on user role"""
         try:
             with get_db_session() as session:
                 service = UserRegistrationRequestService(session)
 
-                # Handle super admin requests
                 if request.user.role == UserRoles.SUPER_ADMIN:
                     requests = service.get_super_admin_pending_requests()
-
-                # Handle practice admin requests
                 elif request.user.role == UserRoles.ADMIN:
                     practice_assignment = (
                         session.query(PracticeUserAssignment)
@@ -195,7 +191,6 @@ class AuthViewSet(viewsets.ViewSet):
                         status=status.HTTP_403_FORBIDDEN,
                     )
 
-                # Serialize response
                 return Response(
                     {
                         "registration_requests": UserRegistrationRequestSerializer(
@@ -248,7 +243,6 @@ class AuthViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def approve_request(self, request, pk=None):
-        """Approve registration or role change request"""
         request_type = request.data.get("request_type")
         if not request_type:
             return Response(
@@ -258,9 +252,7 @@ class AuthViewSet(viewsets.ViewSet):
 
         try:
             with get_db_session() as session:
-                # Validate permissions
                 if request.user.role == UserRoles.ADMIN:
-                    # Get admin's practice
                     practice_assignment = (
                         session.query(PracticeUserAssignment)
                         .filter(PracticeUserAssignment.user_id == request.user.id)
@@ -273,7 +265,6 @@ class AuthViewSet(viewsets.ViewSet):
                             status=status.HTTP_400_BAD_REQUEST,
                         )
 
-                    # Verify request belongs to admin's practice
                     if request_type == "role_change":
                         req = session.query(RoleChangeRequest).get(int(pk))
                     else:
@@ -305,7 +296,6 @@ class AuthViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def reject_request(self, request, pk=None):
-        """Reject registration or role change request"""
         request_type = request.data.get("request_type")
         reason = request.data.get("reason")
 
@@ -317,7 +307,6 @@ class AuthViewSet(viewsets.ViewSet):
 
         try:
             with get_db_session() as session:
-                # Similar permission validation as approve_request
                 if request.user.role == UserRoles.ADMIN:
                     practice_assignment = (
                         session.query(PracticeUserAssignment)
@@ -331,7 +320,6 @@ class AuthViewSet(viewsets.ViewSet):
                             status=status.HTTP_400_BAD_REQUEST,
                         )
 
-                    # Verify request belongs to admin's practice
                     if request_type == "role_change":
                         req = session.query(RoleChangeRequest).get(int(pk))
                     else:
@@ -343,7 +331,6 @@ class AuthViewSet(viewsets.ViewSet):
                             status=status.HTTP_404_NOT_FOUND,
                         )
 
-                    # Verify admin can only reject practice user requests
                     if req.requested_role != UserRoles.PRACTICE_USER:
                         return Response(
                             {"error": "Admins can only handle practice user requests"},

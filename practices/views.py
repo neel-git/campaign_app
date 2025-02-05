@@ -16,10 +16,6 @@ from rest_framework.exceptions import ValidationError
 
 class PracticeViewSet(viewsets.ViewSet):
     def get_permissions(self):
-        """
-        Instantiate and return the list of permissions that this view requires.
-        Allow list action for anyone, require authentication for others
-        """
         if self.action == "list":
             permission_classes = [AllowAny]
         else:
@@ -52,7 +48,6 @@ class PracticeViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request):
-        """Create a new practice (Super Admin only)"""
         if request.user.role != UserRoles.SUPER_ADMIN:
             return Response(
                 {"error": "Only super admins can create practices"},
@@ -90,10 +85,6 @@ class PracticeViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"])
     def approve_user_assignment(self, request, pk=None):
-        """
-        Approve a user's practice assignment request
-        Called when approving user registration
-        """
         user_id = request.data.get("user_id")
         role = request.data.get("role")
 
@@ -125,7 +116,6 @@ class PracticeViewSet(viewsets.ViewSet):
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, pk=None):
-        """Update practice details (Super Admin only)"""
         if request.user.role != UserRoles.SUPER_ADMIN:
             return Response(
                 {"error": "Only super admins can update practices"},
@@ -151,7 +141,6 @@ class PracticeViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, pk=None):
-        """Delete practice (Super Admin only)"""
         if request.user.role != UserRoles.SUPER_ADMIN:
             return Response(
                 {"error": "Only super admins can delete practices"},
@@ -180,7 +169,6 @@ class PracticeViewSet(viewsets.ViewSet):
             
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_practice(self, request):
-        """Get the practice details for the current user"""
         try:
             with get_db_session() as session:
                 service = PracticeService(session)
