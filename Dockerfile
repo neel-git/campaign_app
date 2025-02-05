@@ -1,11 +1,11 @@
-# Use Python 3.11 slim image as base
+# Backend Dockerfile
 FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV DJANGO_ENV production
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -18,14 +18,25 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN pip install gunicorn
 
 # Copy project files
 COPY . .
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Create necessary directories
+RUN mkdir -p /app/logs
+RUN mkdir -p /app/static
+RUN mkdir -p /app/media
 
-# Command to run on container start
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Copy config files
+COPY config/environments/production.yml /app/config/environments/production.yml
+
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Script to wait for database and run migrations
+COPY scripts/entrypoint.sh /app/scripts/
+RUN chmod +x /app/scripts/entrypoint.sh
+
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]

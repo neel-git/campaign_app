@@ -1,5 +1,6 @@
 import os
 import yaml
+from dotenv import load_dotenv
 from typing import Any, Dict
 from pathlib import Path
 
@@ -10,6 +11,10 @@ class ConfigurationLoader:
         self.environment = os.getenv("DJANGO_ENV", "development")
         self._config = None
 
+        env_file = ".env.production" if self.environment == "production" else ".env.local"
+        if os.path.exists(env_file):
+            load_dotenv(env_file)
+ 
     def _load_yaml(self, filepath: str) -> Dict[str, Any]:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Configuration file not found: {filepath}")

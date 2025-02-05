@@ -1,161 +1,218 @@
 import pytest
+from rest_framework.test import APIClient
 from rest_framework import status
-from practices.views import PracticeViewSet
-from tests.utils.request_utils import TestUser, create_test_request
+from django.urls import reverse
 from authentication.models import UserRoles
-from tests.utils.mock_models import MockPractice, MockPracticeUserAssignment
-from unittest.mock import patch
+from practices.models import Practice, PracticeUserAssignment
 
 
-class TestPracticeViewSet:
-    """Test suite for PracticeViewSet"""
+@pytest.fixture
+def api_client():
+    """Fixture for API client"""
+    return APIClient()
 
-    @pytest.fixture
-    def viewset(self):
-        """Creates a fresh viewset instance for each test"""
-        return PracticeViewSet()
 
-    def test_list_practices_unauthenticated(self, viewset, db_session):
-        """Tests that unauthenticated users can only see active practices"""
-        # Create test practices
-        active_practice = MockPractice(name="Active Practice", is_active=True)
-        inactive_practice = MockPractice(name="Inactive Practice", is_active=False)
-        db_session.add_all([active_practice, inactive_practice])
-        db_session.commit()
+@pytest.fixture
+def super_admin_user(db_session):
+    """Fixture to create a Super Admin user"""
+    from authentication.models import User
 
-        # Create unauthenticated request
-        request = create_test_request("/api/practice/", is_authenticated=False)
+    user = User(
+        username="superadmin",
+        email="superadmin@example.com",
+        role=UserRoles.SUPER_ADMIN,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
-        # Test the response
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.list(request)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["name"] == "Active Practice"
+@pytest.fixture
+def admin_user(db_session):
+    """Fixture to create an Admin user"""
+    from authentication.models import User
 
-    def test_list_practices_super_admin(self, viewset, db_session):
-        """Tests that super admin users can see all practices"""
-        # Create test practices
-        practices = [
-            MockPractice(name="Active Practice", is_active=True),
-            MockPractice(name="Inactive Practice", is_active=False),
-        ]
-        db_session.add_all(practices)
-        db_session.commit()
+    user = User(
+        username="admin",
+        email="admin@example.com",
+        role=UserRoles.ADMIN,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
-        # Create super admin user and request
-        super_admin = TestUser(role=UserRoles.SUPER_ADMIN)
-        request = create_test_request("/api/practice/", user=super_admin)
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.list(request)
+@pytest.fixture
+def practice_user(db_session):
+    """Fixture to create a Practice User"""
+    from authentication.models import User
 
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+    user = User(
+        username="practiceuser",
+        email="practiceuser@example.com",
+        role=UserRoles.PRACTICE_USER,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
-    def test_create_practice_super_admin(self, viewset, db_session):
-        """Tests practice creation by super admin"""
-        data = {
-            "name": "New Practice",
-            "description": "Test Description",
-            "is_active": True,
-        }
-        super_admin = TestUser(role=UserRoles.SUPER_ADMIN)
-        request = create_test_request(
-            "/api/practice/", user=super_admin, method="post", data=data
-        )
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.create(request)
+@pytest.fixture
+def practice(db_session):
+    """Fixture to create a practice"""
+    practice = Practice(
+        name="Test Practice", description="Test Description", is_active=True
+    )
+    db_session.add(practice)
+    db_session.commit()
+    db_session.refresh(practice)
+    return practice
 
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["name"] == "New Practice"
 
-    def test_update_practice(self, viewset, db_session):
-        """Tests practice update functionality"""
-        # Create test practice
-        practice = MockPractice(name="Original Name", is_active=True)
-        db_session.add(practice)
-        db_session.commit()
+@pytest.fixture
+def practice_assignment(db_session, practice, practice_user):
+    """Fixture to create a Practice User Assignment"""
+    assignment = PracticeUserAssignment(
+        practice_id=practice.id, user_id=practice_user.id
+    )
+    db_session.add(assignment)
+    db_session.commit()
+    db_session.refresh(assignment)
+    return assignment
 
-        data = {"name": "Updated Name", "description": "Updated Description"}
-        super_admin = TestUser(role=UserRoles.SUPER_ADMIN)
-        request = create_test_request(
-            f"/api/practice/{practice.id}/", user=super_admin, method="put", data=data
-        )
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.update(request, pk=practice.id)
+@pytest.mark.django_db
+def test_list_practices(api_client, practice, super_admin_user):
+    """Test listing practices as Super Admin"""
+    api_client.force_authenticate(user=super_admin_user)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["name"] == "Updated Name"
+    response = api_client.get(reverse("practice-list"))
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) >= 1
+    assert response.data[0]["name"] == practice.name
 
-    def test_delete_practice(self, viewset, db_session):
-        """Tests practice deletion"""
-        # Create test practice
-        practice = MockPractice(name="To Delete", is_active=True)
-        db_session.add(practice)
-        db_session.commit()
 
-        super_admin = TestUser(role=UserRoles.SUPER_ADMIN)
-        request = create_test_request(
-            f"/api/practice/{practice.id}/", user=super_admin, method="delete"
-        )
+@pytest.mark.django_db
+def test_create_practice_super_admin(api_client, super_admin_user):
+    """Test Super Admin can create a practice"""
+    api_client.force_authenticate(user=super_admin_user)
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.destroy(request, pk=practice.id)
+    data = {"name": "New Practice", "description": "New Description"}
+    response = api_client.post(reverse("practice-list"), data)
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["name"] == "New Practice"
 
-    def test_my_practice(self, viewset, db_session):
-        """Tests retrieving user's practice"""
-        # Create test practice and user
-        practice = MockPractice(name="User Practice", is_active=True)
-        db_session.add(practice)
-        db_session.commit()
 
-        user = TestUser(id=1, role=UserRoles.PRACTICE_USER)
+@pytest.mark.django_db
+def test_create_practice_admin_forbidden(api_client, admin_user):
+    """Test Admin cannot create a practice"""
+    api_client.force_authenticate(user=admin_user)
 
-        # Create practice assignment
-        assignment = MockPracticeUserAssignment(
-            practice_id=practice.id, user_id=user.id
-        )
-        db_session.add(assignment)
-        db_session.commit()
+    data = {"name": "Admin Created Practice", "description": "Should Fail"}
+    response = api_client.post(reverse("practice-list"), data)
 
-        request = create_test_request("/api/practice/my_practice/", user=user)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.my_practice(request)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["name"] == "User Practice"
+@pytest.mark.django_db
+def test_retrieve_practice(api_client, practice):
+    """Test retrieving a specific practice"""
+    response = api_client.get(reverse("practice-detail", args=[practice.id]))
 
-    def test_approve_user_assignment(self, viewset, db_session):
-        """Tests user assignment approval"""
-        # Create test practice
-        practice = MockPractice(name="Test Practice", is_active=True)
-        db_session.add(practice)
-        db_session.commit()
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == practice.name
 
-        data = {"user_id": 1, "role": UserRoles.PRACTICE_USER}
-        super_admin = TestUser(role=UserRoles.SUPER_ADMIN)
-        request = create_test_request(
-            f"/api/practice/{practice.id}/approve_user_assignment/",
-            user=super_admin,
-            method="post",
-            data=data,
-        )
 
-        with patch("practices.views.get_db_session") as mock_session:
-            mock_session.return_value.__enter__.return_value = db_session
-            response = viewset.approve_user_assignment(request, pk=practice.id)
+@pytest.mark.django_db
+def test_update_practice_super_admin(api_client, super_admin_user, practice):
+    """Test Super Admin can update practice details"""
+    api_client.force_authenticate(user=super_admin_user)
 
-        assert response.status_code == status.HTTP_201_CREATED
+    updated_data = {"name": "Updated Practice", "description": "Updated Description"}
+    response = api_client.put(
+        reverse("practice-detail", args=[practice.id]), updated_data
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == "Updated Practice"
+
+
+@pytest.mark.django_db
+def test_update_practice_admin_forbidden(api_client, admin_user, practice):
+    """Test Admin cannot update a practice"""
+    api_client.force_authenticate(user=admin_user)
+
+    updated_data = {"name": "Admin Updated Practice"}
+    response = api_client.put(
+        reverse("practice-detail", args=[practice.id]), updated_data
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_delete_practice_super_admin(api_client, super_admin_user, practice):
+    """Test Super Admin can delete a practice"""
+    api_client.force_authenticate(user=super_admin_user)
+
+    response = api_client.delete(reverse("practice-detail", args=[practice.id]))
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+@pytest.mark.django_db
+def test_delete_practice_admin_forbidden(api_client, admin_user, practice):
+    """Test Admin cannot delete a practice"""
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.delete(reverse("practice-detail", args=[practice.id]))
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_approve_user_assignment_super_admin(
+    api_client, super_admin_user, practice, practice_user
+):
+    """Test Super Admin can approve a user's practice assignment"""
+    api_client.force_authenticate(user=super_admin_user)
+
+    data = {"user_id": practice_user.id, "role": UserRoles.PRACTICE_USER}
+    response = api_client.post(
+        reverse("practice-approve-user-assignment", args=[practice.id]), data
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+
+
+@pytest.mark.django_db
+def test_approve_user_assignment_admin_forbidden(
+    api_client, admin_user, practice, practice_user
+):
+    """Test Admin cannot approve another Admin"""
+    api_client.force_authenticate(user=admin_user)
+
+    data = {"user_id": practice_user.id, "role": UserRoles.ADMIN}
+    response = api_client.post(
+        reverse("practice-approve-user-assignment", args=[practice.id]), data
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_my_practice(api_client, practice_user, practice_assignment):
+    """Test getting user's assigned practice"""
+    api_client.force_authenticate(user=practice_user)
+
+    response = api_client.get(reverse("practice-my-practice"))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == practice_assignment.practice.name

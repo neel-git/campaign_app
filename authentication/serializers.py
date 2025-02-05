@@ -16,7 +16,7 @@ class SignupSerializer(serializers.Serializer):
 
     def validate_requested_role(self, value):
         """Convert frontend role format to backend format"""
-        role_mapping = {"ADMIN": "Admin", "PRACTICE USER": "Practice User"} #Mapping
+        role_mapping = {"ADMIN": "Admin", "PRACTICE USER": "Practice User"}
 
         # Convert role format if needed
         converted_role = role_mapping.get(value, value)
@@ -63,7 +63,7 @@ class SignupSerializer(serializers.Serializer):
                 username=validated_data["username"],
                 email=validated_data["email"],
                 full_name=validated_data.get("full_name"),
-                role=None,  # No default role
+                role=None,
                 is_active=True,
                 created_at=timezone.now(),
             )

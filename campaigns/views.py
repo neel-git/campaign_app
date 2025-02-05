@@ -14,9 +14,6 @@ from utils.db_session import get_db_session
 
 
 class CampaignViewSet(viewsets.ViewSet):
-    """
-    ViewSet for managing campaign operations with proper access control
-    """
 
     permission_classes = [IsAuthenticated]
 
@@ -55,9 +52,7 @@ class CampaignViewSet(viewsets.ViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk=None):
-        """
-        Get detailed campaign information if user has access
-        """
+
         with get_db_session() as session:
             service = CampaignService(session)
             try:
@@ -71,30 +66,49 @@ class CampaignViewSet(viewsets.ViewSet):
                 return Response(CampaignSerializer(campaign).data)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+    def partial_update(self, request, pk=None):
+        
+        with get_db_session() as session:
+            serializer = CampaignSerializer(
+                data=request.data,
+                context={
+                    "request": request,
+                    "db_session": session
+                },
+                partial=True
+            )
+            
+            if not serializer.is_valid():
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(
+                    {
+                        "error": "Validation failed",
+                        "details": serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-    def update(self, request, pk=None):
-        """
-        Update campaign details with proper validation
-        """
-        serializer = CampaignSerializer(
-            data=request.data, context={"request": request}, partial=True
-        )
-        if serializer.is_valid():
             try:
-                with get_db_session() as session:
-                    service = CampaignService(session)
-                    campaign = service.update_campaign(
-                        int(pk), serializer.validated_data, request.user
-                    )
-                    return Response(CampaignSerializer(campaign).data)
+                service = CampaignService(session)
+                campaign = service.update_campaign(
+                    int(pk),
+                    serializer.validated_data,
+                    request.user
+                )
+                return Response(CampaignSerializer(campaign).data)
             except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                print(f"Update error: {str(e)}")
+                return Response(
+                    {
+                        "error": str(e),
+                        "details": getattr(e, "detail", str(e))
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
     def destroy(self, request, pk=None):
-        """
-        Delete a campaign if user has proper permissions
-        """
+        
         try:
             with get_db_session() as session:
                 service = CampaignService(session)
@@ -121,32 +135,6 @@ class CampaignViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    # @action(detail=True, methods=["get"])
-    # def history(self, request, pk=None):
-    #     """
-    #     Get campaign history entries
-    #     """
-    #     with get_db_session() as session:
-    #         service = CampaignService(session)
-    #         try:
-    #             campaign = service._get_campaign(int(pk))
-    #             if not campaign:
-    #                 return Response(
-    #                     {"error": "Campaign not found"},
-    #                     status=status.HTTP_404_NOT_FOUND,
-    #                 )
-
-    #             # Get campaign history
-    #             history = (
-    #                 session.query(CampaignHistory)
-    #                 .filter(CampaignHistory.campaign_id == pk)
-    #                 .order_by(CampaignHistory.created_at.desc())
-    #                 .all()
-    #             )
-
-    #             return Response(CampaignHistorySerializer(history, many=True).data)
-    #         except Exception as e:
-    #             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["GET"])
     def my_campaign(self, request):
@@ -160,9 +148,7 @@ class CampaignViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):
-        """
-        Get campaign history entries with related user data
-        """
+
         with get_db_session() as session:
             try:
                 # Get campaign

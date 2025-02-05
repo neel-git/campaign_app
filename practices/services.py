@@ -28,7 +28,6 @@ class PracticeService:
             raise ValidationError(f"Failed to fetch practice: {str(e)}")
 
     def get_all_practices(self, include_inactive: bool = False) -> List[Practice]:
-        """Get practices based on include_inactive flag"""
         try:
             query = self.db.query(Practice)
 
@@ -43,7 +42,6 @@ class PracticeService:
             raise ValidationError(f"Failed to fetch practices: {str(e)}")
 
     def remove_user_from_practice(self, practice_id: int, user_id: int) -> bool:
-        """Remove a user from a practice"""
         assignment = (
             self.db.query(PracticeUserAssignment)
             .filter_by(practice_id=practice_id, user_id=user_id)
@@ -57,7 +55,6 @@ class PracticeService:
         return False
 
     def get_practice_users(self, practice_id: int) -> List[User]:
-        """Get all users assigned to a practice"""
         assignments = (
             self.db.query(PracticeUserAssignment)
             .filter_by(practice_id=practice_id)
@@ -66,7 +63,6 @@ class PracticeService:
         return [self.db.query(User).get(a.user_id) for a in assignments]
 
     def update_practice(self, practice_id: int, **kwargs) -> Optional[Practice]:
-        """Update practice details"""
         try:
             practice = (
                 self.db.query(Practice).filter(Practice.id == practice_id).first()
@@ -98,7 +94,6 @@ class PracticeService:
             raise ValidationError(f"Failed to update practice: {str(e)}")
         
     def get_user_practice(self, user_id: int) -> Optional[Practice]:
-        """Get the practice a user is assigned to"""
         try:
             # Find the practice assignment for this user
             assignment = (

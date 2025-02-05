@@ -9,9 +9,9 @@ from authentication.models import Base, User
 class Practice(Base):
     __tablename__ = "practices"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True)
     name = Column(String(255), unique=True, nullable=False)
-    description = Column(String(500),nullable=True)
+    description = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -19,8 +19,8 @@ class Practice(Base):
 
 class PracticeUserAssignment(Base):
     __tablename__ = "practice_user_assignments"
-    
+
     id = Column(BigInteger, primary_key=True)
-    practice_id = Column(BigInteger, ForeignKey('practices.id'))
-    user_id = Column(BigInteger, ForeignKey('users.id'))
+    practice_id = Column(BigInteger, ForeignKey("practices.id"))
+    user_id = Column(BigInteger, ForeignKey("users.id"))
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())

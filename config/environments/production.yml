@@ -1,0 +1,24 @@
+application:
+  debug: false
+  secret_key: ${DJANGO_SECRET_KEY}
+  allowed_hosts:
+    - ".railway.app"
+    - "localhost"
+    - "127.0.0.1"
+
+database:
+  engine: "django.db.backends.postgresql"
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+
+celery:
+  broker_url: ${CELERY_BROKER_URL}
+  result_backend: ${CELERY_RESULT_BACKEND}
+
+cors:
+  allowed_origins:
+    - "https://your-frontend-domain.vercel.app"  #change here
+  allow_credentials: true

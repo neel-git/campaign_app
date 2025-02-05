@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, Integer,BigInteger
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 from sqlite3 import Connection as SQLite3Connection
@@ -10,6 +10,8 @@ from tests.utils.mock_models import (
     MockPracticeUserAssignment,
 )
 from tests.utils.mock_service import TestPracticeService
+from alembic import command
+from alembic.config import Config
 from authentication.models import UserRoles
 
 
@@ -22,6 +24,11 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.close()
 
+@pytest.fixture(scope="session", autouse=True)
+def apply_migrations():
+    """Apply Alembic migrations before running tests"""
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 @pytest.fixture(scope="session")
 def engine():
@@ -29,11 +36,29 @@ def engine():
         "sqlite:///:memory:", echo=True, connect_args={"check_same_thread": False}
     )
 
-    TestBase.metadata.create_all(bind=test_engine)
+    from authentication.models import Base as AuthBase
+    from practices.models import Base as PracticeBase
+
+    # Force SQLite to use INTEGER instead of BigInteger
+    if "sqlite" in str(test_engine.url):
+        for table in [AuthBase.metadata.tables, PracticeBase.metadata.tables]:
+            for column in table.values():
+                if isinstance(column.primary_key, BigInteger):
+                    column.type = Integer  # Use Integer for SQLite
+    
+    AuthBase.metadata.create_all(bind=test_engine)
+    PracticeBase.metadata.create_all(bind=test_engine)
 
     yield test_engine
 
-    TestBase.metadata.drop_all(bind=test_engine)
+    AuthBase.metadata.drop_all(bind=test_engine)
+    PracticeBase.metadata.drop_all(bind=test_engine)
+
+    # TestBase.metadata.create_all(bind=test_engine)
+
+    # yield test_engine
+
+    # TestBase.metadata.drop_all(bind=test_engine)
 
 
 @pytest.fixture(scope="function")
