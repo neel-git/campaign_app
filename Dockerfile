@@ -31,8 +31,6 @@ RUN mkdir -p /app/media
 # Copy config files
 COPY config/environments/production.yml /app/config/environments/production.yml
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
 
 # Script to wait for database and run migrations
 COPY scripts/entrypoint.sh /app/scripts/
