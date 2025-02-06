@@ -161,15 +161,15 @@ REST_FRAMEWORK = {
 
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_AGE = 86400  # 24 hours in seconds
+SESSION_COOKIE_AGE = 86400
 SESSION_SAVE_EVERY_REQUEST = True
 
-CORS_ALLOWED_ORIGINS = config.get("cors.allowed_origins", [
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://campaign-app-frontend-liard.vercel.app/"
-])
+]
 
-CORS_ALLOW_CREDENTIALS = config.get("cors.allow_credentials", True)
+CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://campaignapp-production.up.railway.app",
@@ -181,13 +181,9 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = "Lax"
-CORS_ALLOW_METHODS = config.get(
-    "cors.allowed_methods", ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-)
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
-CORS_ALLOW_HEADERS = config.get(
-    "cors.allowed_headers",
-    [
+CORS_ALLOW_HEADERS = [
         "accept",
         "accept-encoding",
         "authorization",
@@ -198,7 +194,6 @@ CORS_ALLOW_HEADERS = config.get(
         "x-csrftoken",
         "x-requested-with",
     ],
-)
 
 CELERY_BROKER_URL = config.get("celery.broker_url")
 CELERY_RESULT_BACKEND = config.get("celery.result_backend")
