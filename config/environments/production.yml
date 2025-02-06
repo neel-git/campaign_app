@@ -20,5 +20,23 @@ celery:
 
 cors:
   allowed_origins:
-    - "https://your-frontend-domain.vercel.app"  #change here
+    - "https://campaign-app-frontend-liard.vercel.app/"
+    - "http://localhost:5173"
   allow_credentials: true
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "PATCH"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "accept"
+    - "accept-encoding"
+    - "authorization"
+    - "content-type"
+    - "dnt"
+    - "origin"
+    - "user-agent"
+    - "x-csrftoken"
+    - "x-requested-with"

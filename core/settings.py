@@ -164,37 +164,33 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 86400  # 24 hours in seconds
 SESSION_SAVE_EVERY_REQUEST = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
-# CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = config.get("cors.allowed_origins")
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
+CORS_ALLOW_CREDENTIALS = config.get("cors.allow_credentials", True)
+
+CSRF_TRUSTED_ORIGINS = [origin for origin in CORS_ALLOWED_ORIGINS]
 
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
+CORS_ALLOW_METHODS = config.get(
+    "cors.allowed_methods", ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+)
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-]
+CORS_ALLOW_HEADERS = config.get(
+    "cors.allowed_headers",
+    [
+        "accept",
+        "accept-encoding",
+        "authorization",
+        "content-type",
+        "dnt",
+        "origin",
+        "user-agent",
+        "x-csrftoken",
+        "x-requested-with",
+    ],
+)
 
 CELERY_BROKER_URL = config.get("celery.broker_url")
 CELERY_RESULT_BACKEND = config.get("celery.result_backend")
