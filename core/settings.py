@@ -166,7 +166,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 CORS_ALLOWED_ORIGINS = config.get("cors.allowed_origins", [
     "http://localhost:5173",
-    "https://campaign-app.vercel.app"
+    "https://campaign-app-frontend-liard.vercel.app/"
 ])
 
 CORS_ALLOW_CREDENTIALS = config.get("cors.allow_credentials", True)
