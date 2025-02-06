@@ -172,12 +172,14 @@ CORS_ALLOWED_ORIGINS = config.get("cors.allowed_origins", [
 CORS_ALLOW_CREDENTIALS = config.get("cors.allow_credentials", True)
 
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{origin.replace('http://', '').replace('https://', '')}" 
-    for origin in CORS_ALLOWED_ORIGINS
+    "https://campaignapp-production.up.railway.app",
+    "http://localhost:5173",
+    "https://campaign-app-frontend-liard.vercel.app/"
 ]
 
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CORS_ALLOW_METHODS = config.get(
     "cors.allowed_methods", ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
